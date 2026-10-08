@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Convertidor a WebP Masivo & Compresor</title>
+    <title>WebP SpeedCompress & Image Forge</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -26,8 +25,12 @@
     </script>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- JSZip CDN for root ZIP file creation -->
+    <!-- JSZip CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Cropper.js CSS & JS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
     <style>
         ::-webkit-scrollbar {
             width: 8px;
@@ -47,6 +50,13 @@
             border-color: #6366f1 !important;
             background-color: rgba(99, 102, 241, 0.1) !important;
         }
+        /* Ajustes visuales para el cropper embebido */
+        .cropper-container {
+            max-width: 100% !important;
+        }
+        .cropper-view-box, .cropper-face {
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans flex flex-col transition-colors duration-200">
@@ -58,8 +68,8 @@
                     <i class="fa-solid fa-bolt text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">WebP SpeedCompress</h1>
-                    <p class="text-xs text-slate-400 hidden sm:block">Conversión masiva a WebP e ilimitada sin servidores</p>
+                    <h1 class="text-lg font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">WebP SpeedCompress & Image Forge</h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">Herramientas de conversión, redimensionado y optimización sin servidor</p>
                 </div>
             </div>
             
@@ -70,129 +80,282 @@
                 </span>
             </div>
         </div>
+
+        <!-- Navigation Tabs -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-2 -mb-px">
+            <button id="tabWebpBtn" onclick="switchTab('webp')" class="px-5 py-2.5 text-sm font-semibold border-b-2 border-brand-500 text-brand-400 flex items-center gap-2 transition">
+                <i class="fa-solid fa-file-image"></i> Convertidor a WebP
+            </button>
+            <button id="tabForgeBtn" onclick="switchTab('forge')" class="px-5 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 transition">
+                <i class="fa-solid fa-crop-simple"></i> Image Forge
+            </button>
+        </div>
     </header>
 
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8">
         
-        <!-- Controls & Options Bar -->
-        <section class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-5 shadow-xl">
-            <div class="flex items-center justify-between mb-4 border-b border-slate-700/60 pb-3">
-                <h2 class="font-semibold text-slate-200 flex items-center gap-2">
-                    <i class="fa-solid fa-sliders text-brand-500"></i> Ajustes de Calidad y Compresión
-                </h2>
-                <button id="resetSettingsBtn" class="text-xs text-slate-400 hover:text-slate-200 transition">
-                    <i class="fa-solid fa-rotate-left mr-1"></i> Restablecer
+        <!-- TAB 1: WEBP CONVERTER -->
+        <div id="tabWebp" class="flex flex-col gap-8">
+            <section class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center justify-between mb-4 border-b border-slate-700/60 pb-3">
+                    <h2 class="font-semibold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-brand-500"></i> Ajustes de Calidad y Compresión
+                    </h2>
+                    <button id="resetSettingsBtn" class="text-xs text-slate-400 hover:text-slate-200 transition">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> Restablecer
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center text-sm">
+                            <label for="qualityRange" class="font-medium text-slate-300">Calidad WebP</label>
+                            <span id="qualityVal" class="bg-brand-500/20 text-brand-400 border border-brand-500/30 px-2 py-0.5 rounded text-xs font-semibold">80%</span>
+                        </div>
+                        <input type="range" id="qualityRange" min="1" max="100" value="80" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-500">
+                        <span class="text-xs text-slate-400">A menor calidad, mayor reducción de peso (KB).</span>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center text-sm">
+                            <label for="maxWidthInput" class="font-medium text-slate-300">Ancho Máximo (px)</label>
+                            <span class="text-xs text-slate-400">Mantiene proporción</span>
+                        </div>
+                        <div class="relative">
+                            <input type="number" id="maxWidthInput" placeholder="Ancho original" class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition">
+                            <span class="absolute right-3 top-1.5 text-xs text-slate-500 pointer-events-none">px</span>
+                        </div>
+                        <span class="text-xs text-slate-400">Dejar en blanco para conservar original.</span>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-center text-sm">
+                            <label for="maxHeightInput" class="font-medium text-slate-300">Alto Máximo (px)</label>
+                            <span class="text-xs text-slate-400">Mantiene proporción</span>
+                        </div>
+                        <div class="relative">
+                            <input type="number" id="maxHeightInput" placeholder="Alto original" class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition">
+                            <span class="absolute right-3 top-1.5 text-xs text-slate-500 pointer-events-none">px</span>
+                        </div>
+                        <span class="text-xs text-slate-400">Redimensiona proporcionalmente si se especifica.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-brand-500/60 bg-slate-800/40 rounded-2xl p-8 sm:p-12 text-center transition-all cursor-pointer group flex flex-col items-center justify-center relative overflow-hidden">
+                <input type="file" id="fileInput" multiple accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10">
+                <div class="w-16 h-16 bg-brand-500/10 group-hover:bg-brand-500/20 text-brand-500 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                    <i class="fa-solid fa-cloud-arrow-up text-3xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-200 mb-1">Arrastra y suelta tus imágenes aquí</h3>
+                <p class="text-sm text-slate-400 mb-4">Soporta JPG, PNG, GIF, BMP, WebP, AVIF y más. Sin límite de peso ni de cantidad.</p>
+                <button class="bg-brand-600 hover:bg-brand-500 text-white font-medium px-5 py-2.5 rounded-xl shadow-lg shadow-brand-600/30 transition text-sm flex items-center gap-2 pointer-events-none">
+                    <i class="fa-solid fa-folder-open"></i> Seleccionar Imágenes
                 </button>
-            </div>
+            </section>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Quality Slider -->
-                <div class="flex flex-col gap-2">
-                    <div class="flex justify-between items-center text-sm">
-                        <label for="qualityRange" class="font-medium text-slate-300">Calidad WebP</label>
-                        <span id="qualityVal" class="bg-brand-500/20 text-brand-400 border border-brand-500/30 px-2 py-0.5 rounded text-xs font-semibold">80%</span>
+            <section id="globalBar" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-5 flex flex-col lg:flex-row items-center justify-between gap-4 shadow-xl">
+                <div class="flex flex-wrap items-center gap-6 w-full lg:w-auto justify-around lg:justify-start">
+                    <div>
+                        <span class="text-xs text-slate-400 uppercase font-semibold tracking-wider block">Total Imágenes</span>
+                        <span id="totalCount" class="text-xl font-bold text-slate-100">0</span>
                     </div>
-                    <input type="range" id="qualityRange" min="1" max="100" value="80" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-500">
-                    <span class="text-xs text-slate-400">A menor calidad, mayor reducción de peso (KB).</span>
-                </div>
-
-                <!-- Resize Option: Max Width -->
-                <div class="flex flex-col gap-2">
-                    <div class="flex justify-between items-center text-sm">
-                        <label for="maxWidthInput" class="font-medium text-slate-300">Ancho Máximo (px)</label>
-                        <span class="text-xs text-slate-400">Mantiene proporción</span>
+                    <div class="h-8 w-px bg-slate-700 hidden sm:block"></div>
+                    <div>
+                        <span class="text-xs text-slate-400 uppercase font-semibold tracking-wider block">Peso Original</span>
+                        <span id="totalOriginalSize" class="text-xl font-bold text-slate-300">0 KB</span>
                     </div>
-                    <div class="relative">
-                        <input type="number" id="maxWidthInput" placeholder="Ancho original" class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition">
-                        <span class="absolute right-3 top-1.5 text-xs text-slate-500 pointer-events-none">px</span>
+                    <div class="h-8 w-px bg-slate-700 hidden sm:block"></div>
+                    <div>
+                        <span class="text-xs text-slate-400 uppercase font-semibold tracking-wider block">Peso WebP</span>
+                        <span id="totalConvertedSize" class="text-xl font-bold text-emerald-400">0 KB</span>
                     </div>
-                    <span class="text-xs text-slate-400">Dejar en blanco para conservar original.</span>
-                </div>
-
-                <!-- Resize Option: Max Height -->
-                <div class="flex flex-col gap-2">
-                    <div class="flex justify-between items-center text-sm">
-                        <label for="maxHeightInput" class="font-medium text-slate-300">Alto Máximo (px)</label>
-                        <span class="text-xs text-slate-400">Mantiene proporción</span>
+                    <div class="h-8 w-px bg-slate-700 hidden sm:block"></div>
+                    <div>
+                        <span class="text-xs text-slate-400 uppercase font-semibold tracking-wider block">Ahorro</span>
+                        <span id="totalSavedPercent" class="text-xl font-bold text-emerald-400">0%</span>
                     </div>
-                    <div class="relative">
-                        <input type="number" id="maxHeightInput" placeholder="Alto original" class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition">
-                        <span class="absolute right-3 top-1.5 text-xs text-slate-500 pointer-events-none">px</span>
-                    </div>
-                    <span class="text-xs text-slate-400">Redimensiona proporcionalmente si se especifica.</span>
                 </div>
-            </div>
-        </section>
 
-        <!-- Drag & Drop Zone -->
-        <section id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-brand-500/60 bg-slate-800/40 rounded-2xl p-8 sm:p-12 text-center transition-all cursor-pointer group flex flex-col items-center justify-center relative overflow-hidden">
-            <input type="file" id="fileInput" multiple accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10">
-            <div class="w-16 h-16 bg-brand-500/10 group-hover:bg-brand-500/20 text-brand-500 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
-                <i class="fa-solid fa-cloud-arrow-up text-3xl"></i>
-            </div>
-            <h3 class="text-lg font-bold text-slate-200 mb-1">Arrastra y suelta tus imágenes aquí</h3>
-            <p class="text-sm text-slate-400 mb-4">Soporta JPG, PNG, GIF, BMP, WebP, AVIF y más. Sin límite de peso ni de cantidad.</p>
-            <button class="bg-brand-600 hover:bg-brand-500 text-white font-medium px-5 py-2.5 rounded-xl shadow-lg shadow-brand-600/30 transition text-sm flex items-center gap-2 pointer-events-none">
-                <i class="fa-solid fa-folder-open"></i> Seleccionar Imágenes
-            </button>
-        </section>
+                <div class="flex items-center gap-3 w-full lg:w-auto justify-end">
+                    <button id="clearAllBtn" class="bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium px-4 py-2.5 rounded-xl transition flex items-center gap-2">
+                        <i class="fa-solid fa-trash-can"></i> Limpiar Todo
+                    </button>
+                    <button id="downloadZipBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-zipper"></i> Descargar Todo (ZIP)
+                    </button>
+                </div>
+            </section>
 
-        <section id="globalBar" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-5 flex flex-col lg:flex-row items-center justify-between gap-4 shadow-xl">
-            <div class="flex flex-wrap items-center gap-6 w-full lg:w-auto justify-around lg:justify-start">
-                <div>
-                    <span class="text-xs text-slate-400 uppercase font-semibold tracking-wider block">Total Imágenes</span>
-                    <span id="totalCount" class="text-xl font-bold text-slate-100">0</span>
+            <div id="progressContainer" class="hidden bg-slate-800/80 border border-slate-700/60 rounded-xl p-4">
+                <div class="flex justify-between items-center mb-2">
+                    <span id="progressText" class="text-xs font-semibold text-slate-300">Convertiendo imágenes...</span>
+                    <span id="progressPercent" class="text-xs font-bold text-brand-400">0%</span>
                 </div>
-                <div class="h-8 w-px bg-slate-700 hidden sm:block"></div>
-                <div>
-                    <span class="text-xs text-slate-400 uppercase font-semibold tracking-wider block">Peso Original</span>
-                    <span id="totalOriginalSize" class="text-xl font-bold text-slate-300">0 KB</span>
-                </div>
-                <div class="h-8 w-px bg-slate-700 hidden sm:block"></div>
-                <div>
-                    <span class="text-xs text-slate-400 uppercase font-semibold tracking-wider block">Peso WebP</span>
-                    <span id="totalConvertedSize" class="text-xl font-bold text-emerald-400">0 KB</span>
-                </div>
-                <div class="h-8 w-px bg-slate-700 hidden sm:block"></div>
-                <div>
-                    <span class="text-xs text-slate-400 uppercase font-semibold tracking-wider block">Ahorro</span>
-                    <span id="totalSavedPercent" class="text-xl font-bold text-emerald-400">0%</span>
+                <div class="w-full bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                    <div id="progressBar" class="bg-gradient-to-r from-brand-600 to-emerald-500 h-full w-0 transition-all duration-200"></div>
                 </div>
             </div>
 
-            <div class="flex items-center gap-3 w-full lg:w-auto justify-end">
-                <button id="clearAllBtn" class="bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium px-4 py-2.5 rounded-xl transition flex items-center gap-2">
-                    <i class="fa-solid fa-trash-can"></i> Limpiar Todo
-                </button>
-                <button id="downloadZipBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center gap-2">
-                    <i class="fa-solid fa-file-zipper"></i> Descargar Todo (ZIP)
-                </button>
-            </div>
-        </section>
-
-        <!-- Progress Bar Container -->
-        <div id="progressContainer" class="hidden bg-slate-800/80 border border-slate-700/60 rounded-xl p-4">
-            <div class="flex justify-between items-center mb-2">
-                <span id="progressText" class="text-xs font-semibold text-slate-300">Convertiendo imágenes...</span>
-                <span id="progressPercent" class="text-xs font-bold text-brand-400">0%</span>
-            </div>
-            <div class="w-full bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                <div id="progressBar" class="bg-gradient-to-r from-brand-600 to-emerald-500 h-full w-0 transition-all duration-200"></div>
-            </div>
+            <section id="imageList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></section>
         </div>
 
-        <section id="imageList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></section>
+        <!-- TAB 2: IMAGE FORGE -->
+        <div id="tabForge" class="hidden flex flex-col gap-8">
+            <section class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center justify-between mb-4 border-b border-slate-700/60 pb-3">
+                    <h2 class="font-semibold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-gears text-brand-500"></i> Ajustes de Image Forge
+                    </h2>
+                    <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
+                        <i class="fa-solid fa-shield-halved"></i> Garantía &lt;100KB inteligente
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="flex flex-col gap-2">
+                        <label class="text-sm font-medium text-slate-300">Tamaño de Salida Preset / Personalizado</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <button onclick="setForgePreset('375x375')" id="btnPreset375x375" class="forge-preset-btn bg-brand-600 text-white px-3 py-2 rounded-xl text-xs font-bold border border-brand-500 transition shadow">375 x 375</button>
+                            <button onclick="setForgePreset('375x180')" id="btnPreset375x180" class="forge-preset-btn bg-slate-900/80 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 transition">375 x 180</button>
+                            <button onclick="setForgePreset('180x375')" id="btnPreset180x375" class="forge-preset-btn bg-slate-900/80 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 transition">180 x 375</button>
+                            <button onclick="setForgePreset('custom')" id="btnPresetCustom" class="forge-preset-btn bg-slate-900/80 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 transition">Custom</button>
+                        </div>
+
+                        <div id="forgeCustomInputs" class="hidden grid grid-cols-2 gap-3 mt-2">
+                            <div>
+                                <label class="text-xs text-slate-400 block mb-1">Ancho (px)</label>
+                                <input type="number" id="forgeCustomWidth" value="375" min="10" class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-400 block mb-1">Alto (px)</label>
+                                <input type="number" id="forgeCustomHeight" value="375" min="10" class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label class="text-sm font-medium text-slate-300">Formato de Salida Global</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="forgeFormat" value="image/webp" checked class="peer sr-only" onchange="reprocessForgeImages()">
+                                <div class="bg-slate-900/80 border border-slate-700 peer-checked:border-brand-500 peer-checked:bg-brand-500/10 peer-checked:text-brand-400 p-3 rounded-xl text-center text-xs font-bold transition">
+                                    WebP
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="forgeFormat" value="image/png" class="peer sr-only" onchange="reprocessForgeImages()">
+                                <div class="bg-slate-900/80 border border-slate-700 peer-checked:border-brand-500 peer-checked:bg-brand-500/10 peer-checked:text-brand-400 p-3 rounded-xl text-center text-xs font-bold transition">
+                                    PNG
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="forgeFormat" value="image/jpeg" class="peer sr-only" onchange="reprocessForgeImages()">
+                                <div class="bg-slate-900/80 border border-slate-700 peer-checked:border-brand-500 peer-checked:bg-brand-500/10 peer-checked:text-brand-400 p-3 rounded-xl text-center text-xs font-bold transition">
+                                    JPEG
+                                </div>
+                            </label>
+                        </div>
+                        <p class="text-xs text-slate-400">Todas las imágenes procesadas se guardarán en el formato seleccionado ajustando la calidad para mantenerlas por debajo de 100KB.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="forgeDropZone" class="border-2 border-dashed border-slate-700 hover:border-brand-500/60 bg-slate-800/40 rounded-2xl p-8 sm:p-12 text-center transition-all cursor-pointer group flex flex-col items-center justify-center relative overflow-hidden">
+                <input type="file" id="forgeFileInput" multiple accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10">
+                <div class="w-16 h-16 bg-brand-500/10 group-hover:bg-brand-500/20 text-brand-500 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                    <i class="fa-solid fa-images text-3xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-200 mb-1">Arrastra y suelta imágenes para Image Forge</h3>
+                <p class="text-sm text-slate-400 mb-4">Ajuste de dimensiones, recorte directo en tarjeta y compresión inteligente &lt;100 KB.</p>
+                <button class="bg-brand-600 hover:bg-brand-500 text-white font-medium px-5 py-2.5 rounded-xl shadow-lg shadow-brand-600/30 transition text-sm flex items-center gap-2 pointer-events-none">
+                    <i class="fa-solid fa-folder-open"></i> Seleccionar Imágenes
+                </button>
+            </section>
+
+            <section id="forgeGlobalBar" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-5 flex flex-col lg:flex-row items-center justify-between gap-4 shadow-xl">
+                <div class="flex flex-wrap items-center gap-6 w-full lg:w-auto justify-around lg:justify-start">
+                    <div>
+                        <span class="text-xs text-slate-400 uppercase font-semibold tracking-wider block">Imágenes</span>
+                        <span id="forgeTotalCount" class="text-xl font-bold text-slate-100">0</span>
+                    </div>
+                    <div class="h-8 w-px bg-slate-700 hidden sm:block"></div>
+                    <div>
+                        <span class="text-xs text-slate-400 uppercase font-semibold tracking-wider block">Peso Original</span>
+                        <span id="forgeTotalOriginalSize" class="text-xl font-bold text-slate-300">0 KB</span>
+                    </div>
+                    <div class="h-8 w-px bg-slate-700 hidden sm:block"></div>
+                    <div>
+                        <span class="text-xs text-slate-400 uppercase font-semibold tracking-wider block">Peso Procesado</span>
+                        <span id="forgeTotalConvertedSize" class="text-xl font-bold text-emerald-400">0 KB</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 w-full lg:w-auto justify-end">
+                    <button id="forgeClearAllBtn" class="bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium px-4 py-2.5 rounded-xl transition flex items-center gap-2">
+                        <i class="fa-solid fa-trash-can"></i> Limpiar Todo
+                    </button>
+                    <button id="forgeDownloadZipBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-zipper"></i> Descargar Forge (ZIP)
+                    </button>
+                </div>
+            </section>
+
+            <div id="forgeProgressContainer" class="hidden bg-slate-800/80 border border-slate-700/60 rounded-xl p-4">
+                <div class="flex justify-between items-center mb-2">
+                    <span id="forgeProgressText" class="text-xs font-semibold text-slate-300">Procesando Forge...</span>
+                    <span id="forgeProgressPercent" class="text-xs font-bold text-brand-400">0%</span>
+                </div>
+                <div class="w-full bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                    <div id="forgeProgressBar" class="bg-gradient-to-r from-brand-600 to-emerald-500 h-full w-0 transition-all duration-200"></div>
+                </div>
+            </div>
+
+            <section id="forgeImageList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></section>
+        </div>
+
     </main>
 
-    <!-- Footer -->
     <footer class="border-t border-slate-800 bg-slate-900 py-6 text-center text-xs text-slate-500">
-        <p>Procesamiento WebP 100% en tu dispositivo. Tus imágenes nunca se suben a ningún servidor.</p>
+        <p>Procesamiento 100% en tu dispositivo. Tus imágenes nunca se suben a ningún servidor.</p>
     </footer>
 
     <script>
+        function cleanFileName(originalName, targetPreset = '') {
+            let baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+            baseName = baseName.replace(/_\d+x\d+(?=_|\b)/gi, '');
+
+            if (targetPreset) {
+                const presetRegex = new RegExp(`_${targetPreset}$`, 'i');
+                if (!presetRegex.test(baseName)) {
+                    baseName = `${baseName}_${targetPreset}`;
+                }
+            }
+            return baseName;
+        }
+
+        function switchTab(tab) {
+            const webpBtn = document.getElementById('tabWebpBtn');
+            const forgeBtn = document.getElementById('tabForgeBtn');
+            const webpSection = document.getElementById('tabWebp');
+            const forgeSection = document.getElementById('tabForge');
+
+            if (tab === 'webp') {
+                webpSection.classList.remove('hidden');
+                forgeSection.classList.add('hidden');
+                webpBtn.className = "px-5 py-2.5 text-sm font-semibold border-b-2 border-brand-500 text-brand-400 flex items-center gap-2 transition";
+                forgeBtn.className = "px-5 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 transition";
+            } else {
+                webpSection.classList.add('hidden');
+                forgeSection.classList.remove('hidden');
+                forgeBtn.className = "px-5 py-2.5 text-sm font-semibold border-b-2 border-brand-500 text-brand-400 flex items-center gap-2 transition";
+                webpBtn.className = "px-5 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 transition";
+            }
+        }
+
+        // --- TAB 1: WEBP LOGIC ---
         let imagesData = [];
 
-        // DOM Elements
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
         const qualityRange = document.getElementById('qualityRange');
@@ -244,9 +407,7 @@
         });
 
         dropZone.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            handleFiles(files);
+            handleFiles(e.dataTransfer.files);
         });
 
         fileInput.addEventListener('change', (e) => {
@@ -462,7 +623,8 @@
                 const percent = Math.round((diff / item.originalSize) * 100);
                 const isSaved = diff > 0;
 
-                const webpFileName = item.name.substring(0, item.name.lastIndexOf('.')) + '.webp';
+                const cleanName = cleanFileName(item.name);
+                const webpFileName = `${cleanName}.webp`;
 
                 statusSlot.innerHTML = `
                     <span class="text-emerald-400 font-semibold text-xs inline-flex items-center gap-1">
@@ -474,7 +636,7 @@
                     <div class="flex flex-col">
                         <span class="text-xs font-semibold text-slate-200">Peso: ${formatBytes(item.convertedSize)}</span>
                         <span class="text-[11px] font-medium ${isSaved ? 'text-emerald-400' : 'text-amber-400'}">
-                            ${isSaved ? `Reducido ${percent}% (-${formatBytes(diff)})` : `Aumentó ${Math.abs(percent)}%`}
+                            ${isSaved ? `Reducido ${percent}\% (-${formatBytes(diff)})` : `Aumentó ${Math.abs(percent)}%`}
                         </span>
                     </div>
                     <a href="${item.convertedUrl}" download="${webpFileName}" class="bg-brand-600/20 hover:bg-brand-600 text-brand-300 hover:text-white border border-brand-500/30 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
@@ -536,23 +698,20 @@
                 return;
             }
 
-            // Create ZIP directly without subfolders
             const zip = new JSZip();
             const usedNames = new Set();
 
-            doneItems.forEach((item, index) => {
-                let baseName = item.name.substring(0, item.name.lastIndexOf('.')) || `imagen_${index + 1}`;
-                let webpFileName = `${baseName}.webp`;
+            doneItems.forEach((item) => {
+                let cleanBase = cleanFileName(item.name);
+                let webpFileName = `${cleanBase}.webp`;
 
-                // Handle duplicate filenames at the root level
                 let counter = 1;
                 while (usedNames.has(webpFileName)) {
-                    webpFileName = `${baseName}_${counter}.webp`;
+                    webpFileName = `${cleanBase}_${counter}.webp`;
                     counter++;
                 }
                 usedNames.add(webpFileName);
 
-                // Add files DIRECTLY to the root of the ZIP archive
                 zip.file(webpFileName, item.convertedBlob);
             });
 
@@ -577,6 +736,558 @@
             } finally {
                 downloadZipBtn.disabled = false;
                 downloadZipBtn.innerHTML = `<i class="fa-solid fa-file-zipper"></i> Descargar Todo (ZIP)`;
+            }
+        });
+
+
+        // --- TAB 2: IMAGE FORGE LOGIC & INLINE CROPPER ---
+        let forgeData = [];
+        let activePreset = '375x375';
+        let croppers = {}; // Almacena instancias de Cropper por cada ID de tarjeta
+
+        const forgeDropZone = document.getElementById('forgeDropZone');
+        const forgeFileInput = document.getElementById('forgeFileInput');
+        const forgeImageList = document.getElementById('forgeImageList');
+        const forgeGlobalBar = document.getElementById('forgeGlobalBar');
+        const forgeTotalCount = document.getElementById('forgeTotalCount');
+        const forgeTotalOriginalSize = document.getElementById('forgeTotalOriginalSize');
+        const forgeTotalConvertedSize = document.getElementById('forgeTotalConvertedSize');
+        const forgeClearAllBtn = document.getElementById('forgeClearAllBtn');
+        const forgeDownloadZipBtn = document.getElementById('forgeDownloadZipBtn');
+        const forgeProgressContainer = document.getElementById('forgeProgressContainer');
+        const forgeProgressBar = document.getElementById('forgeProgressBar');
+        const forgeProgressText = document.getElementById('forgeProgressText');
+        const forgeProgressPercent = document.getElementById('forgeProgressPercent');
+        const forgeCustomWidth = document.getElementById('forgeCustomWidth');
+        const forgeCustomHeight = document.getElementById('forgeCustomHeight');
+
+        function setForgePreset(preset) {
+            activePreset = preset;
+            document.querySelectorAll('.forge-preset-btn').forEach(btn => {
+                btn.className = "forge-preset-btn bg-slate-900/80 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 transition";
+            });
+
+            const customBox = document.getElementById('forgeCustomInputs');
+            if (preset === 'custom') {
+                document.getElementById('btnPresetCustom').className = "forge-preset-btn bg-brand-600 text-white px-3 py-2 rounded-xl text-xs font-bold border border-brand-500 transition shadow";
+                customBox.classList.remove('hidden');
+            } else {
+                customBox.classList.add('hidden');
+                if (preset === '375x375') document.getElementById('btnPreset375x375').className = "forge-preset-btn bg-brand-600 text-white px-3 py-2 rounded-xl text-xs font-bold border border-brand-500 transition shadow";
+                if (preset === '375x180') document.getElementById('btnPreset375x180').className = "forge-preset-btn bg-brand-600 text-white px-3 py-2 rounded-xl text-xs font-bold border border-brand-500 transition shadow";
+                if (preset === '180x375') document.getElementById('btnPreset180x375').className = "forge-preset-btn bg-brand-600 text-white px-3 py-2 rounded-xl text-xs font-bold border border-brand-500 transition shadow";
+            }
+            reprocessForgeImages();
+        }
+
+        forgeCustomWidth.addEventListener('change', reprocessForgeImages);
+        forgeCustomHeight.addEventListener('change', reprocessForgeImages);
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            forgeDropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                forgeDropZone.classList.add('drop-zone-active');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            forgeDropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                forgeDropZone.classList.remove('drop-zone-active');
+            }, false);
+        });
+
+        forgeDropZone.addEventListener('drop', (e) => {
+            handleForgeFiles(e.dataTransfer.files);
+        });
+
+        forgeFileInput.addEventListener('change', (e) => {
+            handleForgeFiles(e.target.files);
+            forgeFileInput.value = '';
+        });
+
+        function handleForgeFiles(files) {
+            const validFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            if (validFiles.length === 0) return;
+
+            validFiles.forEach(file => {
+                const id = 'forge_' + Math.random().toString(36).substr(2, 9);
+                const item = {
+                    id: id,
+                    file: file,
+                    croppedCanvas: null,
+                    name: file.name,
+                    originalSize: file.size,
+                    convertedBlob: null,
+                    convertedSize: 0,
+                    convertedUrl: null,
+                    isCropping: false,
+                    status: 'pending'
+                };
+                forgeData.push(item);
+            });
+
+            updateForgeUI();
+            processForgeQueue();
+        }
+
+        function reprocessForgeImages() {
+            if (forgeData.length === 0) return;
+
+            forgeData.forEach(item => {
+                item.status = 'pending';
+                if (item.convertedUrl) {
+                    URL.revokeObjectURL(item.convertedUrl);
+                    item.convertedUrl = null;
+                }
+            });
+
+            processForgeQueue();
+        }
+
+        function getForgeDimensions() {
+            if (activePreset === '375x375') return { width: 375, height: 375 };
+            if (activePreset === '375x180') return { width: 375, height: 180 };
+            if (activePreset === '180x375') return { width: 180, height: 375 };
+            
+            const w = parseInt(forgeCustomWidth.value) || 375;
+            const h = parseInt(forgeCustomHeight.value) || 375;
+            return { width: w, height: h };
+        }
+
+        function getSelectedFormat() {
+            const formatRadio = document.querySelector('input[name="forgeFormat"]:checked');
+            return formatRadio ? formatRadio.value : 'image/webp';
+        }
+
+        async function processForgeQueue() {
+            const pendingItems = forgeData.filter(item => item.status === 'pending');
+            if (pendingItems.length === 0) return;
+
+            showForgeProgress(true);
+            let processed = 0;
+            const total = pendingItems.length;
+
+            for (let item of pendingItems) {
+                item.status = 'processing';
+                updateForgeCardStatus(item);
+
+                try {
+                    await processForgeImage(item);
+                    item.status = 'done';
+                } catch (err) {
+                    console.error(err);
+                    item.status = 'error';
+                }
+
+                processed++;
+                const percent = Math.round((processed / total) * 100);
+                forgeProgressBar.style.width = `${percent}%`;
+                forgeProgressPercent.textContent = `${percent}%`;
+                forgeProgressText.textContent = `Procesando ${processed} de ${total} imágenes...`;
+
+                updateForgeCardStatus(item);
+                updateForgeGlobalStats();
+            }
+
+            setTimeout(() => {
+                showForgeProgress(false);
+            }, 600);
+        }
+
+        function processForgeImage(item) {
+            return new Promise((resolve, reject) => {
+                const { width: targetW, height: targetH } = getForgeDimensions();
+                const format = getSelectedFormat();
+
+                if (item.croppedCanvas) {
+                    const tempImg = new Image();
+                    tempImg.onload = async () => {
+                        try {
+                            const blob = await optimizeImageToUnder100KB(tempImg, targetW, targetH, format);
+                            item.convertedBlob = blob;
+                            item.convertedSize = blob.size;
+                            item.convertedUrl = URL.createObjectURL(blob);
+                            resolve(item);
+                        } catch(e) { reject(e); }
+                    };
+                    tempImg.src = item.croppedCanvas.toDataURL();
+                    return;
+                }
+
+                const img = new Image();
+                const url = URL.createObjectURL(item.file);
+
+                img.onload = async () => {
+                    URL.revokeObjectURL(url);
+                    try {
+                        const blob = await optimizeImageToUnder100KB(img, targetW, targetH, format);
+                        item.convertedBlob = blob;
+                        item.convertedSize = blob.size;
+                        item.convertedUrl = URL.createObjectURL(blob);
+                        resolve(item);
+                    } catch (e) {
+                        reject(e);
+                    }
+                };
+
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Error al cargar la imagen'));
+                };
+
+                img.src = url;
+            });
+        }
+
+        function optimizeImageToUnder100KB(img, targetW, targetH, format) {
+            return new Promise((resolve, reject) => {
+                const maxSizeBytes = 100 * 1024;
+
+                let curW = targetW;
+                let curH = targetH;
+                let quality = 0.92;
+
+                const attemptCanvas = (w, h, q) => {
+                    return new Promise((res) => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+
+                        if (format === 'image/jpeg') {
+                            ctx.fillStyle = '#FFFFFF';
+                            ctx.fillRect(0, 0, w, h);
+                        }
+
+                        const scale = Math.max(w / img.width, h / img.height);
+                        const nw = img.width * scale;
+                        const nh = img.height * scale;
+                        const cx = (w - nw) / 2;
+                        const cy = (h - nh) / 2;
+
+                        ctx.drawImage(img, cx, cy, nw, nh);
+
+                        canvas.toBlob((blob) => {
+                            res(blob);
+                        }, format, q);
+                    });
+                };
+
+                const loopCompression = async () => {
+                    let blob = await attemptCanvas(curW, curH, quality);
+
+                    if (format === 'image/png') {
+                        while (blob && blob.size > maxSizeBytes && (curW > 100 && curH > 100)) {
+                            curW = Math.round(curW * 0.85);
+                            curH = Math.round(curH * 0.85);
+                            blob = await attemptCanvas(curW, curH, 1.0);
+                        }
+                    } else {
+                        while (blob && blob.size > maxSizeBytes && quality > 0.15) {
+                            quality -= 0.08;
+                            blob = await attemptCanvas(curW, curH, quality);
+                        }
+
+                        while (blob && blob.size > maxSizeBytes && (curW > 80 && curH > 80)) {
+                            curW = Math.round(curW * 0.9);
+                            curH = Math.round(curH * 0.9);
+                            blob = await attemptCanvas(curW, curH, quality);
+                        }
+                    }
+
+                    if (blob) {
+                        resolve(blob);
+                    } else {
+                        reject(new Error('Fallo en generación de imagen'));
+                    }
+                };
+
+                loopCompression();
+            });
+        }
+
+        function updateForgeUI() {
+            if (forgeData.length > 0) {
+                forgeGlobalBar.classList.remove('hidden');
+            } else {
+                forgeGlobalBar.classList.add('hidden');
+            }
+
+            forgeImageList.innerHTML = '';
+            forgeData.forEach(item => {
+                const card = createForgeCardDOM(item);
+                forgeImageList.appendChild(card);
+            });
+
+            updateForgeGlobalStats();
+        }
+
+        function createForgeCardDOM(item) {
+            const div = document.createElement('div');
+            div.id = `forge_card_${item.id}`;
+            div.className = 'bg-slate-800 border border-slate-700/80 rounded-2xl p-4 flex flex-col justify-between shadow-lg relative overflow-hidden transition';
+
+            const displayUrl = item.convertedUrl || (item.croppedCanvas ? item.croppedCanvas.toDataURL() : URL.createObjectURL(item.file));
+
+            div.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-semibold text-slate-200 truncate pr-2" title="${item.name}">${item.name}</h4>
+                    <button onclick="removeForgeImage('${item.id}')" class="text-slate-500 hover:text-rose-400 p-1 rounded-lg transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Recuadro donde se visualiza la imagen procesada/recortada -->
+                <div class="relative w-full h-48 bg-slate-900 border border-slate-700/80 rounded-xl overflow-hidden flex items-center justify-center my-2">
+                    <img id="crop_target_${item.id}" src="${displayUrl}" class="max-w-full max-h-full object-contain" alt="preview">
+                </div>
+
+                <div class="status-slot text-xs mb-2">
+                    <span class="text-slate-500"><i class="fa-solid fa-spinner animate-spin"></i> Procesando...</span>
+                </div>
+
+                <div class="card-details-slot bg-slate-900/60 rounded-xl p-3 border border-slate-800 flex items-center justify-between">
+                    <div class="text-xs text-slate-400">Preparando...</div>
+                </div>
+            `;
+
+            updateForgeCardStatusContent(div, item);
+            return div;
+        }
+
+        function updateForgeCardStatus(item) {
+            const card = document.getElementById(`forge_card_${item.id}`);
+            if (card) {
+                updateForgeCardStatusContent(card, item);
+            }
+        }
+
+        function updateForgeCardStatusContent(card, item) {
+            const statusSlot = card.querySelector('.status-slot');
+            const detailsSlot = card.querySelector('.card-details-slot');
+
+            if (item.status === 'pending' || item.status === 'processing') {
+                statusSlot.innerHTML = `<span class="text-brand-400 flex items-center gap-1.5"><i class="fa-solid fa-spinner animate-spin"></i> Optimizando &lt;100KB...</span>`;
+                detailsSlot.innerHTML = `<span class="text-xs text-slate-500 italic">Procesando calidad e imagen...</span>`;
+            } else if (item.status === 'error') {
+                statusSlot.innerHTML = `<span class="text-rose-400 font-medium"><i class="fa-solid fa-triangle-exclamation"></i> Error</span>`;
+                detailsSlot.innerHTML = `<span class="text-xs text-rose-400">Fallo en el procesamiento</span>`;
+            } else if (item.status === 'done') {
+                const format = getSelectedFormat();
+                const ext = format === 'image/webp' ? 'webp' : format === 'image/png' ? 'png' : 'jpg';
+                
+                const presetSuffix = activePreset === 'custom' ? `${getForgeDimensions().width}x${getForgeDimensions().height}` : activePreset;
+                const cleanName = cleanFileName(item.name, presetSuffix);
+                const outFileName = `${cleanName}.${ext}`;
+
+                const isUnder100KB = item.convertedSize < 100 * 1024;
+
+                statusSlot.innerHTML = `
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-emerald-400 font-semibold inline-flex items-center gap-1">
+                            <i class="fa-solid fa-circle-check"></i> ${ext.toUpperCase()} Listo
+                        </span>
+                        <span class="text-slate-400">Orig: ${formatBytes(item.originalSize)}</span>
+                    </div>
+                `;
+
+                if (item.isCropping) {
+                    detailsSlot.innerHTML = `
+                        <div class="flex items-center justify-between w-full gap-2">
+                            <button onclick="cancelInlineCrop('${item.id}')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-medium px-3 py-1.5 rounded-lg transition">
+                                Cancelar
+                            </button>
+                            <button onclick="applyInlineCrop('${item.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
+                                <i class="fa-solid fa-check"></i> Guardar Recorte
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    detailsSlot.innerHTML = `
+                        <div class="flex flex-col">
+                            <span class="text-xs font-semibold text-slate-200">Peso: ${formatBytes(item.convertedSize)}</span>
+                            <span class="text-[11px] font-medium ${isUnder100KB ? 'text-emerald-400' : 'text-amber-400'}">
+                                ${isUnder100KB ? '✔ Menos de 100 KB' : 'Ajustado a máxima compresión'}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="enableInlineCrop('${item.id}')" class="bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="Recortar imagen directamente aquí">
+                                <i class="fa-solid fa-scissors"></i> Recortar
+                            </button>
+                            <a href="${item.convertedUrl}" download="${outFileName}" class="bg-brand-600/20 hover:bg-brand-600 text-brand-300 hover:text-white border border-brand-500/30 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-download"></i> Guardar
+                            </a>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // --- INLINE CROPPER FUNCTIONS ---
+        function enableInlineCrop(id) {
+            const item = forgeData.find(i => i.id === id);
+            if (!item) return;
+
+            item.isCropping = true;
+            updateForgeCardStatus(item);
+
+            const imgTarget = document.getElementById(`crop_target_${id}`);
+            // Usamos la imagen original o el recorte anterior como fuente limpia
+            const cleanSrc = item.croppedCanvas ? item.croppedCanvas.toDataURL() : URL.createObjectURL(item.file);
+            imgTarget.src = cleanSrc;
+
+            const { width: targetW, height: targetH } = getForgeDimensions();
+            const ratio = targetW / targetH;
+
+            // Destruir si ya existía una instancia activa
+            if (croppers[id]) {
+                croppers[id].destroy();
+            }
+
+            croppers[id] = new Cropper(imgTarget, {
+                aspectRatio: ratio,
+                viewMode: 1,
+                autoCropArea: 0.9,
+                background: false
+            });
+        }
+
+        function cancelInlineCrop(id) {
+            const item = forgeData.find(i => i.id === id);
+            if (!item) return;
+
+            if (croppers[id]) {
+                croppers[id].destroy();
+                delete croppers[id];
+            }
+
+            item.isCropping = false;
+            
+            // Restaurar imagen de vista previa procesada
+            const imgTarget = document.getElementById(`crop_target_${id}`);
+            if (imgTarget && item.convertedUrl) {
+                imgTarget.src = item.convertedUrl;
+            }
+
+            updateForgeCardStatus(item);
+        }
+
+        function applyInlineCrop(id) {
+            const item = forgeData.find(i => i.id === id);
+            if (!item || !croppers[id]) return;
+
+            const croppedCanvas = croppers[id].getCroppedCanvas();
+            croppers[id].destroy();
+            delete croppers[id];
+
+            item.croppedCanvas = croppedCanvas;
+            item.isCropping = false;
+            item.status = 'pending';
+
+            if (item.convertedUrl) {
+                URL.revokeObjectURL(item.convertedUrl);
+                item.convertedUrl = null;
+            }
+
+            updateForgeUI();
+            processForgeQueue();
+        }
+
+        function removeForgeImage(id) {
+            if (croppers[id]) {
+                croppers[id].destroy();
+                delete croppers[id];
+            }
+            const index = forgeData.findIndex(item => item.id === id);
+            if (index !== -1) {
+                if (forgeData[index].convertedUrl) {
+                    URL.revokeObjectURL(forgeData[index].convertedUrl);
+                }
+                forgeData.splice(index, 1);
+                updateForgeUI();
+            }
+        }
+
+        forgeClearAllBtn.addEventListener('click', () => {
+            Object.keys(croppers).forEach(id => {
+                if (croppers[id]) croppers[id].destroy();
+            });
+            croppers = {};
+
+            forgeData.forEach(item => {
+                if (item.convertedUrl) URL.revokeObjectURL(item.convertedUrl);
+            });
+            forgeData = [];
+            updateForgeUI();
+        });
+
+        function updateForgeGlobalStats() {
+            forgeTotalCount.textContent = forgeData.length;
+
+            const totalOrig = forgeData.reduce((acc, item) => acc + item.originalSize, 0);
+            const totalConv = forgeData.reduce((acc, item) => acc + (item.convertedSize || 0), 0);
+
+            forgeTotalOriginalSize.textContent = formatBytes(totalOrig);
+            forgeTotalConvertedSize.textContent = formatBytes(totalConv);
+        }
+
+        function showForgeProgress(show) {
+            if (show) {
+                forgeProgressContainer.classList.remove('hidden');
+            } else {
+                forgeProgressContainer.classList.add('hidden');
+            }
+        }
+
+        forgeDownloadZipBtn.addEventListener('click', async () => {
+            const doneItems = forgeData.filter(item => item.status === 'done' && item.convertedBlob);
+            if (doneItems.length === 0) {
+                alert('¡No hay imágenes procesadas para descargar!');
+                return;
+            }
+
+            const zip = new JSZip();
+            const usedNames = new Set();
+            const format = getSelectedFormat();
+            const ext = format === 'image/webp' ? 'webp' : format === 'image/png' ? 'png' : 'jpg';
+            const presetSuffix = activePreset === 'custom' ? `${getForgeDimensions().width}x${getForgeDimensions().height}` : activePreset;
+
+            doneItems.forEach((item) => {
+                let cleanBase = cleanFileName(item.name, presetSuffix);
+                let fileName = `${cleanBase}.${ext}`;
+
+                let counter = 1;
+                while (usedNames.has(fileName)) {
+                    fileName = `${cleanBase}_${counter}.${ext}`;
+                    counter++;
+                }
+                usedNames.add(fileName);
+
+                zip.file(fileName, item.convertedBlob);
+            });
+
+            forgeDownloadZipBtn.disabled = true;
+            forgeDownloadZipBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Comprimiendo ZIP...`;
+
+            try {
+                const content = await zip.generateAsync({ type: "blob" });
+                const zipUrl = URL.createObjectURL(content);
+                
+                const link = document.createElement('a');
+                link.href = zipUrl;
+                link.download = `image_forge_${presetSuffix}.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                setTimeout(() => URL.revokeObjectURL(zipUrl), 1000);
+            } catch (e) {
+                console.error(e);
+                alert('Error al generar el archivo ZIP.');
+            } finally {
+                forgeDownloadZipBtn.disabled = false;
+                forgeDownloadZipBtn.innerHTML = `<i class="fa-solid fa-file-zipper"></i> Descargar Forge (ZIP)`;
             }
         });
     </script>
