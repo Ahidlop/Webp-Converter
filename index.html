@@ -50,7 +50,6 @@
             border-color: #6366f1 !important;
             background-color: rgba(99, 102, 241, 0.1) !important;
         }
-        /* Ajustes visuales para el cropper embebido */
         .cropper-container {
             max-width: 100% !important;
         }
@@ -84,7 +83,7 @@
         <!-- Navigation Tabs -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-2 -mb-px">
             <button id="tabWebpBtn" onclick="switchTab('webp')" class="px-5 py-2.5 text-sm font-semibold border-b-2 border-brand-500 text-brand-400 flex items-center gap-2 transition">
-                <i class="fa-solid fa-file-image"></i> Convertidor a WebP
+                <i class="fa-solid fa-file-image"></i> WebP Converter
             </button>
             <button id="tabForgeBtn" onclick="switchTab('forge')" class="px-5 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 transition">
                 <i class="fa-solid fa-crop-simple"></i> Image Forge
@@ -323,7 +322,6 @@
     <script>
         function cleanFileName(originalName, targetPreset = '') {
             let baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-            baseName = baseName.replace(/_\d+x\d+(?=_|\b)/gi, '');
 
             if (targetPreset) {
                 const presetRegex = new RegExp(`_${targetPreset}$`, 'i');
@@ -743,7 +741,7 @@
         // --- TAB 2: IMAGE FORGE LOGIC & INLINE CROPPER ---
         let forgeData = [];
         let activePreset = '375x375';
-        let croppers = {}; // Almacena instancias de Cropper por cada ID de tarjeta
+        let croppers = {};
 
         const forgeDropZone = document.getElementById('forgeDropZone');
         const forgeFileInput = document.getElementById('forgeFileInput');
@@ -1038,7 +1036,6 @@
                     </button>
                 </div>
 
-                <!-- Recuadro donde se visualiza la imagen procesada/recortada -->
                 <div class="relative w-full h-48 bg-slate-900 border border-slate-700/80 rounded-xl overflow-hidden flex items-center justify-center my-2">
                     <img id="crop_target_${item.id}" src="${displayUrl}" class="max-w-full max-h-full object-contain" alt="preview">
                 </div>
@@ -1133,14 +1130,12 @@
             updateForgeCardStatus(item);
 
             const imgTarget = document.getElementById(`crop_target_${id}`);
-            // Usamos la imagen original o el recorte anterior como fuente limpia
             const cleanSrc = item.croppedCanvas ? item.croppedCanvas.toDataURL() : URL.createObjectURL(item.file);
             imgTarget.src = cleanSrc;
 
             const { width: targetW, height: targetH } = getForgeDimensions();
             const ratio = targetW / targetH;
 
-            // Destruir si ya existía una instancia activa
             if (croppers[id]) {
                 croppers[id].destroy();
             }
@@ -1164,7 +1159,6 @@
 
             item.isCropping = false;
             
-            // Restaurar imagen de vista previa procesada
             const imgTarget = document.getElementById(`crop_target_${id}`);
             if (imgTarget && item.convertedUrl) {
                 imgTarget.src = item.convertedUrl;
